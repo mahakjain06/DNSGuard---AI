@@ -38,6 +38,7 @@ def resolve_domain(domain, record_type="A", timeout=2.5):
         "records": [],
         "ttl": None,
         "response_time_ms": None,
+        "nxdomain": False,
         "error": None,
     }
 
@@ -52,6 +53,7 @@ def resolve_domain(domain, record_type="A", timeout=2.5):
         result["response_time_ms"] = elapsed_ms
 
     except dns.resolver.NXDOMAIN:
+        result["nxdomain"] = True
         result["error"] = "Domain does not exist (NXDOMAIN)."
     except dns.resolver.NoAnswer:
         result["error"] = f"No {record_type} record found for this domain."

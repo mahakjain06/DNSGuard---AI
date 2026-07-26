@@ -16,11 +16,17 @@ from database import (
     delete_scan,
     clear_scans,
     get_dashboard_data,
+    log_url_scan,
+    get_recent_url_scans,
+    clear_url_scans,
+    delete_url_scan,
 )
 from dns_utils import resolve_domain, get_txt_record
 import enrichment
 from explain import generate_reasons
 import model_insights
+import url_safety
+import tld_encoding
 
 app = Flask(__name__)
 
@@ -148,16 +154,43 @@ def analyze_domain(domain, query_type, resolve_dns=False, deep_enrichment=False,
         "message": message,
         "features": feature_dict,
         "reasons": generate_reasons(feature_dict),
+        "tld_risk": tld_encoding.get_tld_risk_score(domain),
         "error": None,
     }
 
+    if result["tld_risk"]["risk_score"] >= 0.15:
+        result["reasons"].append({
+            "ok": False,
+            "text": f".{result['tld_risk']['tld']} has an elevated target-encoded risk score ({result['tld_risk']['risk_score']}) based on historical TLD abuse patterns",
+        })
+
     if resolve_dns:
         result["dns"] = resolve_domain(domain, query_type if query_type != "TXT" else "A")
+
+        # If the domain doesn't even exist on public DNS, "safe vs threat" isn't
+        # a meaningful question - override the verdict rather than show a
+        # misleading "Safe Domain" for something that was never real to begin with.
+        if result["dns"].get("nxdomain"):
+            result["status"] = "Domain Does Not Exist"
+            result["risk_level"] = "Unknown"
+            result["status_color"] = "unknown"
+            result["confidence"] = None
+            result["message"] = (
+                "This domain does not resolve on the public DNS system. It may be a typo, "
+                "an unregistered domain, or a name that was never real to begin with - there's "
+                "nothing to assess for safety since no such domain actually exists."
+            )
+            save_history = False  # not a meaningful safe/threat data point
 
     if deep_enrichment:
         try:
             result["lexical"] = enrichment.lexical_enrichment(domain)
             result["reasons"] = generate_reasons(feature_dict, lexical=result["lexical"])
+            if result["tld_risk"]["risk_score"] >= 0.15:
+                result["reasons"].append({
+                    "ok": False,
+                    "text": f".{result['tld_risk']['tld']} has an elevated target-encoded risk score ({result['tld_risk']['risk_score']}) based on historical TLD abuse patterns",
+                })
         except Exception:
             logger.exception("Lexical enrichment failed for domain=%r", domain)
             result["lexical"] = None
@@ -168,6 +201,13 @@ def analyze_domain(domain, query_type, resolve_dns=False, deep_enrichment=False,
         result["domain_age"] = enrichment.get_domain_age(domain)
         result["txt"] = get_txt_record(domain)
         result["reputation"] = enrichment.get_reputation(domain, VT_API_KEY)
+
+    # A nonexistent domain has no meaningful "why" - clear anything that
+    # explains a prediction that's no longer being shown as the verdict.
+    if result.get("dns", {}).get("nxdomain"):
+        result["reasons"] = None
+        result["shap_explanation"] = None
+        result["tld_risk"] = None
 
     if save_history:
         try:
@@ -221,6 +261,7 @@ def predict():
         status_color=result["status_color"],
         features=result["features"],
         reasons=result.get("reasons"),
+        tld_risk=result.get("tld_risk"),
         shap_explanation=result.get("shap_explanation"),
         dns=result.get("dns"),
         lexical=result.get("lexical"),
@@ -357,6 +398,57 @@ def model_info():
         metrics=model_insights.TRAINING_METRICS,
         importance=FEATURE_IMPORTANCE,
     )
+
+
+# ==========================
+# Website / URL Safety Check
+# ==========================
+@app.route("/website-check", methods=["GET", "POST"])
+def website_check():
+    recent = get_recent_url_scans(limit=10)
+
+    if request.method == "GET":
+        return render_template("website_check.html", result=None, error=None, recent=recent)
+
+    raw_url = request.form.get("url", "").strip()
+    if not raw_url:
+        return render_template("website_check.html", result=None, error="Please enter a URL to check.", recent=recent)
+
+    result = url_safety.compute_website_verdict(raw_url, VT_API_KEY)
+
+    if result.get("error"):
+        return render_template("website_check.html", result=None, error=result["error"], recent=recent)
+
+    if result["risk_points"] is not None:
+        try:
+            log_url_scan(
+                url=result["url"],
+                host=result["host"],
+                verdict=result["verdict"],
+                risk_points=result["risk_points"],
+            )
+        except Exception:
+            logger.exception("Failed to write URL scan to history for url=%r", raw_url)
+
+    logger.info(
+        "Website check complete - host=%s verdict=%s risk_points=%s",
+        result["host"], result["verdict"], result["risk_points"],
+    )
+
+    recent = get_recent_url_scans(limit=10)  # refresh so the new scan shows up
+    return render_template("website_check.html", result=result, error=None, recent=recent)
+
+
+@app.route("/website-check/clear", methods=["POST"])
+def website_check_clear():
+    clear_url_scans()
+    return redirect(url_for("website_check"))
+
+
+@app.route("/website-check/delete/<int:scan_id>", methods=["POST"])
+def website_check_delete(scan_id):
+    delete_url_scan(scan_id)
+    return redirect(url_for("website_check"))
 
 
 # ==========================

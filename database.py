@@ -23,7 +23,7 @@ def get_connection():
 
 
 def init_db():
-    """Create the scans table if it doesn't already exist. Safe to call on every app start."""
+    """Create the scans and url_scans tables if they don't already exist. Safe to call on every app start."""
     conn = get_connection()
     conn.execute(
         """
@@ -36,6 +36,18 @@ def init_db():
             confidence REAL NOT NULL,
             entropy REAL,
             digit_ratio REAL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS url_scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT NOT NULL,
+            host TEXT NOT NULL,
+            verdict TEXT NOT NULL,
+            risk_points INTEGER NOT NULL,
             created_at TEXT NOT NULL
         )
         """
@@ -150,3 +162,42 @@ def get_dashboard_data(limit=5000):
         "entropy_bins": entropy_bins,
         "confidence_bins": confidence_bins,
     }
+
+
+def log_url_scan(url, host, verdict, risk_points):
+    """Insert one URL/website safety check result into its own history table."""
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO url_scans (url, host, verdict, risk_points, created_at) VALUES (?, ?, ?, ?, ?)",
+        (url, host, verdict, risk_points, datetime.utcnow().isoformat(timespec="seconds")),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_recent_url_scans(limit=25):
+    """Return the most recent URL safety checks, newest first."""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM url_scans ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def clear_url_scans():
+    """Wipe the entire URL/website check history."""
+    conn = get_connection()
+    conn.execute("DELETE FROM url_scans")
+    conn.commit()
+    conn.close()
+
+
+def delete_url_scan(scan_id):
+    """Delete a single URL scan by id. Returns True if a row was actually deleted."""
+    conn = get_connection()
+    cur = conn.execute("DELETE FROM url_scans WHERE id = ?", (scan_id,))
+    conn.commit()
+    deleted = cur.rowcount > 0
+    conn.close()
+    return deleted

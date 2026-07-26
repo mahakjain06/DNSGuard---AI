@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Safety Check - DNSGuard AI</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<!-- Distinct violet accent for this page only, so it reads as a separate
+     "zone" from the blue Domain Check while sharing the same base theme. -->
+<style>
+  :root {
+    --accent: #8B5CF6;
+    --accent-soft: rgba(139, 92, 246, 0.14);
+  }
+  .btn-analyze, .brand-icon, input[type="file"].input-dg::file-selector-button {
+    color: #FFFFFF;
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar-dg">
+  <div class="container-xl inner">
+    <a href="/" class="brand" style="text-decoration:none;">
+      <span class="brand-icon"><i class="fa-solid fa-shield-halved"></i></span>
+      DNSGuard AI
+    </a>
+    <div class="nav-status">
+      <a href="/model-info" class="nav-link-dg">Model Info</a>
+      <a href="/dashboard" class="nav-link-dg">Dashboard</a>
+      <a href="/history" class="nav-link-dg">History</a>
+      <a href="/" class="nav-link-dg">Domain Check</a>
+      <span class="status-group">
+        <span class="status-dot"></span>
+        Model online
+      </span>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container-xl hero-inner">
+    <span class="eyebrow">Website / URL Safety Check</span>
+    <h1>Is this link safe to open?</h1>
+    <p class="subtitle">Paste a full link before you click it</p>
+    <p class="desc">
+      This is a separate, complementary check from the domain-query analyzer above -
+      it looks at the URL structure, SSL certificate, domain age, and reputation
+      to flag phishing and malware red flags before you visit a site.
+    </p>
+  </div>
+</header>
+
+<main class="container-xl">
+
+  <section class="dg-card analyze-card">
+    <div class="dg-card-body">
+      <form action="/website-check" method="POST" class="row g-3 align-items-end">
+        <div class="col-12 col-md-9">
+          <label class="form-label-dg" for="url">Website / Link</label>
+          <input
+            type="text"
+            class="input-dg"
+            id="url"
+            name="url"
+            placeholder="Example: https://example.com/login"
+            value="{{ result.url if result else '' }}"
+            autocomplete="off"
+            required
+          >
+          <p class="csv-hint">Paste the full link, including https:// if you have it.</p>
+        </div>
+        <div class="col-12 col-md-3">
+          <button type="submit" class="btn-analyze">
+            <i class="fa-solid fa-link"></i> Check Link
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% if error %}
+  <div class="alert-dg">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error }}
+  </div>
+  {% endif %}
+
+  {% if result %}
+  <section class="section-gap">
+    <div class="results-header">
+      <h2>Website Analysis</h2>
+      <div class="target-domain">SITE &nbsp;→&nbsp; <span>{{ result.host }}</span></div>
+    </div>
+
+    {% if result.verdict_color == 'unknown' %}
+    <!-- Nonexistent website - nothing to check -->
+    <div class="dg-card metric-card status-card is-unknown" style="margin-bottom:16px;">
+      <div class="metric-label">Verdict</div>
+      <div class="status-badge">
+        <span class="status-icon"><i class="fa-solid fa-circle-question"></i></span>
+        {{ result.verdict }}
+      </div>
+    </div>
+    <div class="dg-card readout-card is-unknown-readout">
+      <div class="dg-card-body">
+        <div class="readout-label">Why?</div>
+        <div class="readout-body">
+          This site does not resolve on the public DNS system - it may be a typo, an
+          unregistered domain, or a link that was never real to begin with. There's
+          nothing to check for safety since no such website actually exists.
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="metric-grid">
+      <!-- Verdict Card -->
+      <div class="dg-card metric-card status-card {{ 'is-safe' if result.verdict_color == 'success' else ('is-caution' if result.verdict_color == 'warn' else 'is-danger') }}">
+        <div class="metric-label">Verdict</div>
+        <div class="status-badge">
+          <span class="status-icon">
+            <i class="fa-solid {{ 'fa-circle-check' if result.verdict_color == 'success' else ('fa-triangle-exclamation' if result.verdict_color == 'warn' else 'fa-skull-crossbones') }}"></i>
+          </span>
+          {{ result.verdict }}
+        </div>
+      </div>
+
+      <!-- Risk Score -->
+      <div class="dg-card metric-card">
+        <div class="metric-label">Risk Points</div>
+        <div class="confidence-value">{{ result.risk_points }}</div>
+        <p class="csv-hint" style="margin-top:0;">0-2 Safe &middot; 3-6 Suspicious &middot; 7+ Unsafe</p>
+      </div>
+
+      <!-- SSL -->
+      <div class="dg-card metric-card">
+        <div class="metric-label">SSL Certificate</div>
+        <div class="risk-value" style="font-size:1.1rem;">
+          {% if result.ssl.present %}
+          <span class="risk-pill risk-Low">Present</span>
+          {% else %}
+          <span class="risk-pill risk-High">Missing</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Heuristic checks breakdown -->
+    <div class="dg-card feature-card" style="margin-bottom:16px;">
+      <div class="card-title-row">
+        <h3><i class="fa-solid fa-list-check"></i> Safety Checklist</h3>
+        <p>Each red flag below is transparent and independently explainable - this is rule-based, not a black-box score.</p>
+      </div>
+      <div class="table-responsive">
+        <table class="table-dg">
+          <thead>
+            <tr>
+              <th>Check</th>
+              <th>Result</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in result.checks %}
+            <tr>
+              <td class="feat-name">{{ c.check }}</td>
+              <td>
+                <span class="risk-pill {{ 'risk-High' if c.triggered else 'risk-Low' }}">
+                  {{ "Flagged" if c.triggered else "OK" }}
+                </span>
+              </td>
+              <td style="color: var(--text-mute);">{{ c.note }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+              <td class="feat-name">Domain Age</td>
+              <td>
+                {% if result.domain_age.available %}
+                <span class="risk-pill {{ 'risk-High' if result.domain_age.age_days < 30 else 'risk-Low' }}">
+                  {{ result.domain_age.age_days }} days
+                </span>
+                {% else %}
+                <span class="risk-pill risk-Unknown">N/A</span>
+                {% endif %}
+              </td>
+              <td style="color: var(--text-mute);">
+                {% if result.domain_age.available %}Registered {{ result.domain_age.created }}{% else %}{{ result.domain_age.error }}{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="feat-name">Reputation (VirusTotal)</td>
+              <td>
+                {% if result.reputation.available %}
+                <span class="risk-pill {{ 'risk-High' if result.reputation.malicious > 0 else 'risk-Low' }}">
+                  {{ result.reputation.malicious }} flagged
+                </span>
+                {% else %}
+                <span class="risk-pill risk-Unknown">N/A</span>
+                {% endif %}
+              </td>
+              <td style="color: var(--text-mute);">
+                {% if result.reputation.available %}{{ result.reputation.malicious }} malicious / {{ result.reputation.harmless }} harmless / {{ result.reputation.suspicious }} suspicious{% else %}{{ result.reputation.error }}{% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if recent %}
+  <section class="section-gap" style="padding-top:0;">
+    <div class="dg-card feature-card">
+      <div class="card-title-row" style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Website Checks</h3>
+        </div>
+        <form action="/website-check/clear" method="POST" onsubmit="return confirm('Delete all website check history? This cannot be undone.');">
+          <button type="submit" class="btn-danger-sm">
+            <i class="fa-solid fa-trash-can"></i> Clear all
+          </button>
+        </form>
+      </div>
+      <div class="table-responsive">
+        <table class="table-dg">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Host</th>
+              <th>Verdict</th>
+              <th>Risk Points</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in recent %}
+            <tr>
+              <td>{{ r.created_at }}</td>
+              <td>{{ r.host }}</td>
+              <td>
+                <span class="risk-pill {{ 'risk-Low' if 'Safe' in r.verdict else ('risk-High' if 'Unsafe' in r.verdict else 'risk-Caution') }}">
+                  {{ r.verdict }}
+                </span>
+              </td>
+              <td>{{ r.risk_points }}</td>
+              <td>
+                <form action="/website-check/delete/{{ r.id }}" method="POST" onsubmit="return confirm('Delete this scan?');">
+                  <button type="submit" class="btn-icon-danger" title="Delete this scan">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+</main>
+
+<footer class="footer-dg">
+  <div class="container-xl inner">
+    <span>© 2026 DNSGuard AI - DNS Tunneling Detection with Machine Learning</span>
+    <span>Built with Flask &amp; Scikit-learn</span>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  document.querySelectorAll('.bar[data-width]').forEach(function (el) {
+    el.style.width = el.dataset.width + '%';
+  });
+</script>
+</body>
+</html>

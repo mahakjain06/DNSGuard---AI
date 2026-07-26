@@ -15,6 +15,8 @@
   --danger: #EF4444;
   --danger-soft: rgba(239, 68, 68, 0.12);
   --warn: #EF4444;
+  --caution: #F59E0B;
+  --caution-soft: rgba(245, 158, 11, 0.12);
 
   --text: #FFFFFF;
   --text-dim: #94A3B8;
@@ -417,6 +419,8 @@ select.input-dg {
 /* Status card */
 .status-card.is-safe { border-left: 3px solid var(--safe); }
 .status-card.is-danger { border-left: 3px solid var(--danger); }
+.status-card.is-unknown { border-left: 3px solid var(--text-mute); }
+.status-card.is-caution { border-left: 3px solid var(--caution); }
 
 .status-badge {
   display: flex;
@@ -440,6 +444,8 @@ select.input-dg {
 
 .is-safe .status-icon { background: var(--safe-soft); color: var(--safe); }
 .is-danger .status-icon { background: var(--danger-soft); color: var(--danger); }
+.is-unknown .status-icon { background: rgba(148, 163, 184, 0.12); color: var(--text-mute); }
+.is-caution .status-icon { background: var(--caution-soft); color: var(--caution); }
 
 .risk-pill {
   display: inline-block;
@@ -453,6 +459,8 @@ select.input-dg {
 .risk-Low { background: var(--safe-soft); color: var(--safe); }
 .risk-Medium { background: var(--danger-soft); color: var(--warn); }
 .risk-High { background: var(--danger-soft); color: var(--danger); }
+.risk-Unknown { background: rgba(148, 163, 184, 0.12); color: var(--text-mute); }
+.risk-Caution { background: var(--caution-soft); color: var(--caution); }
 
 /* Confidence card */
 .confidence-value {
@@ -508,6 +516,7 @@ select.input-dg {
 
 .is-danger-readout .dg-card-body { border-left-color: var(--danger); }
 .is-safe-readout .dg-card-body { border-left-color: var(--safe); }
+.is-unknown-readout .dg-card-body { border-left-color: var(--text-mute); }
 
 .readout-label {
   font-size: 0.75rem;

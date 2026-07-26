@@ -28,6 +28,7 @@
       DNSGuard AI
     </div>
     <div class="nav-status">
+      <a href="/website-check" class="nav-link-dg">Website Check</a>
       <a href="/model-info" class="nav-link-dg">Model Info</a>
       <a href="/dashboard" class="nav-link-dg">Dashboard</a>
       <a href="/batch" class="nav-link-dg">Batch Upload</a>
@@ -111,11 +112,11 @@
     <div class="metric-grid">
 
       <!-- Status Card -->
-      <div class="dg-card metric-card status-card {{ 'is-safe' if status_color == 'success' else 'is-danger' }}">
+      <div class="dg-card metric-card status-card {{ 'is-safe' if status_color == 'success' else ('is-unknown' if status_color == 'unknown' else 'is-danger') }}">
         <div class="metric-label">Status</div>
         <div class="status-badge">
           <span class="status-icon">
-            <i class="fa-solid {{ 'fa-circle-check' if status_color == 'success' else 'fa-triangle-exclamation' }}"></i>
+            <i class="fa-solid {{ 'fa-circle-check' if status_color == 'success' else ('fa-circle-question' if status_color == 'unknown' else 'fa-triangle-exclamation') }}"></i>
           </span>
           {{ status }}
         </div>
@@ -125,10 +126,15 @@
       <!-- Confidence Card -->
       <div class="dg-card metric-card">
         <div class="metric-label">Model Confidence</div>
+        {% if confidence is not none %}
         <div class="confidence-value">{{ confidence }}%</div>
         <div class="progress-dg">
           <div class="bar" data-width="{{ confidence }}"></div>
         </div>
+        {% else %}
+        <div class="confidence-value" style="color: var(--text-mute);">N/A</div>
+        <p class="csv-hint" style="margin-top:0;">Not applicable - no domain to score.</p>
+        {% endif %}
       </div>
 
       <!-- Risk Level Card -->
@@ -195,6 +201,19 @@
     </div>
     {% endif %}
 
+    {% if tld_risk and tld_risk.flagged %}
+    <!-- Known high-abuse TLD flag (separate from the model's own verdict) -->
+    <div class="alert-dg" style="margin-top:0; margin-bottom:16px;">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>
+        <strong>.{{ tld_risk.tld }}</strong> is a TLD frequently associated with spam, phishing, and malware
+        hosting in published threat-intel reports (Spamhaus, Interisle). This is <strong>independent of the
+        model's verdict above</strong> - the model only checks for DNS tunneling patterns, not general TLD
+        reputation, so treat this as an extra signal to weigh, not an override.
+      </span>
+    </div>
+    {% endif %}
+
     {% if dns %}
     <!-- Live DNS Resolution -->
     <div class="dg-card readout-card" style="margin-bottom:16px;">
@@ -215,7 +234,7 @@
     {% endif %}
 
     <!-- Recommendation Readout -->
-    <div class="dg-card readout-card {{ 'is-safe-readout' if status_color == 'success' else 'is-danger-readout' }}">
+    <div class="dg-card readout-card {{ 'is-safe-readout' if status_color == 'success' else ('is-unknown-readout' if status_color == 'unknown' else 'is-danger-readout') }}">
       <div class="dg-card-body">
         <div class="readout-label">Recommendation</div>
         <div class="readout-body">{{ message }}</div>

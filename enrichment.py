@@ -30,6 +30,46 @@ BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/]{8,}={0,2}$")
 BASE32_PATTERN = re.compile(r"^[A-Z2-7]{8,}={0,6}$")
 HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8,}$")
 
+# NOTE: TLD risk used to live here as a static allow/deny list. It has been
+# replaced by proper target encoding - see tld_encoding.py.
+
+
+# TLDs repeatedly flagged as high-abuse by published threat intelligence
+# (Spamhaus Domain Reputation reports, Interisle Cybercrime Supply Chain
+# studies, Netcraft). This tracks REAL-WORLD PHISHING/SPAM/MALWARE hosting
+# abuse - a completely different signal from DNS tunneling, which is what
+# the trained model detects. A domain landing on this list is NOT run
+# through the model's uncommon_tld feature (which only checks a tiny
+# common-vs-not list) - it's a separate, explicit lookup against TLDs with
+# a documented history of bulk/cheap-registration abuse.
+#
+# This list will drift as abuse patterns shift - it's illustrative of the
+# category, not a live-updated feed. For production use, a service like
+# Spamhaus's TLD statistics (https://www.spamhaus.org/statistics/tlds/)
+# should be queried directly instead of a hardcoded list.
+HIGH_RISK_TLDS = {
+    # Frequently cited in Spamhaus / Netcraft / Palo Alto "worst TLD" reports
+    "xyz", "top", "cfd", "buzz", "loan", "men", "xin", "ooo", "cam",
+    "click", "work", "party", "review", "trade", "date", "faith",
+    "accountant", "science", "download", "racing", "cricket", "country",
+    "stream", "surf", "monster", "quest", "bond", "rest", "autos", "lol",
+    "mov", "zip", "icu", "cyou", "win", "bid", "support", "fit", "locker",
+    "webcam", "vip", "live", "lat", "cn",
+    # Free/very-cheap ccTLDs with a long documented history of bulk abuse
+    "tk", "ml", "ga", "cf", "gq",
+}
+
+
+def check_tld_risk(domain):
+    """
+    Checks the domain's TLD against a curated high-abuse list. Returns
+    {"flagged": bool, "tld": str} - purely informational, does not affect
+    the model's prediction.
+    """
+    labels = domain.split(".")
+    tld = labels[-1].lower() if labels else ""
+    return {"flagged": tld in HIGH_RISK_TLDS, "tld": tld}
+
 
 # ============================================================
 # Lexical enrichment (pure string math, no network calls)
