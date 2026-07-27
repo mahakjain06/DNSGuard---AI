@@ -100,27 +100,39 @@
       <div class="target-domain">SITE &nbsp;→&nbsp; <span>{{ result.host }}</span></div>
     </div>
 
-    {% if result.verdict_color == 'unknown' %}
-    <!-- Nonexistent website - nothing to check -->
-    <div class="dg-card metric-card status-card is-unknown" style="margin-bottom:16px;">
-      <div class="metric-label">Verdict</div>
-      <div class="status-badge">
-        <span class="status-icon"><i class="fa-solid fa-circle-question"></i></span>
-        {{ result.verdict }}
-      </div>
-    </div>
-    <div class="dg-card readout-card is-unknown-readout">
+    <!-- At-a-glance Summary Card -->
+    <div class="dg-card summary-card {{ 'is-safe' if result.verdict_color == 'success' else ('is-caution' if result.verdict_color == 'warn' else ('is-unknown' if result.verdict_color == 'unknown' else 'is-danger')) }}" style="margin-bottom:16px;">
       <div class="dg-card-body">
-        <div class="readout-label">Why?</div>
-        <div class="readout-body">
-          This site does not resolve on the public DNS system - it may be a typo, an
-          unregistered domain, or a link that was never real to begin with. There's
-          nothing to check for safety since no such website actually exists.
+        <div class="summary-status-line">
+          <i class="fa-solid {{ 'fa-circle-check' if result.verdict_color == 'success' else ('fa-triangle-exclamation' if result.verdict_color == 'warn' else ('fa-circle-question' if result.verdict_color == 'unknown' else 'fa-skull-crossbones')) }}"></i>
+          STATUS: {{ "SECURE & VERIFIED" if result.verdict_color == 'success' else ("DANGEROUS / THREAT DETECTED" if result.verdict_color == 'danger' else ("SUSPICIOUS" if result.verdict_color == 'warn' else "DOES NOT EXIST")) }}
+        </div>
+        <ul class="summary-bullets">
+          <li><span>Website Type:</span> {{ result.website_type }}</li>
+          <li><span>Domain Type:</span> {{ result.domain_type }}</li>
+          {% if result.verdict_color != 'unknown' %}
+          <li><span>SSL Certificate:</span> {{ "Valid (HTTPS Active)" if result.ssl.present else ("Not Checked (Domain Unreachable)" if result.ssl.error == "Domain does not resolve" else "Missing or Self-Signed") }}</li>
+          {% endif %}
+          {% if result.connection_status == "Does Not Resolve (NXDOMAIN)" and result.verdict_color != 'unknown' %}
+          <li><span>DNS Status:</span> Does Not Resolve (NXDOMAIN) - flagged on URL structure alone</li>
+          {% endif %}
+          {% if result.threat_type %}
+          <li><span>Threat Type:</span> {{ result.threat_type }}</li>
+          {% endif %}
+          {% if result.security_score is not none %}
+          <li><span>Security Score:</span> {{ result.security_score }}/100</li>
+          {% else %}
+          <li><span>DNS Status:</span> NXDOMAIN</li>
+          <li><span>Connection:</span> {{ result.connection_status }}</li>
+          {% endif %}
+        </ul>
+        <div class="summary-message">
+          {{ result.summary_message }}
         </div>
       </div>
     </div>
 
-    {% else %}
+    {% if result.verdict_color != 'unknown' %}
     <div class="metric-grid">
       <!-- Verdict Card -->
       <div class="dg-card metric-card status-card {{ 'is-safe' if result.verdict_color == 'success' else ('is-caution' if result.verdict_color == 'warn' else 'is-danger') }}">
@@ -146,6 +158,8 @@
         <div class="risk-value" style="font-size:1.1rem;">
           {% if result.ssl.present %}
           <span class="risk-pill risk-Low">Present</span>
+          {% elif result.ssl.error == "Domain does not resolve" %}
+          <span class="risk-pill risk-Unknown">N/A</span>
           {% else %}
           <span class="risk-pill risk-High">Missing</span>
           {% endif %}

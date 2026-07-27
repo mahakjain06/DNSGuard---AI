@@ -109,14 +109,39 @@
       <div class="target-domain">QUERY &nbsp;→&nbsp; <span>{{ domain }}</span></div>
     </div>
 
+    <!-- At-a-glance Summary Card -->
+    <div class="dg-card summary-card {{ 'is-safe' if status_color == 'success' else ('is-caution' if status_color == 'caution' else ('is-unknown' if status_color == 'unknown' else 'is-danger')) }}" style="margin-bottom:16px;">
+      <div class="dg-card-body">
+        <div class="summary-status-line">
+          <i class="fa-solid {{ 'fa-circle-check' if status_color == 'success' else ('fa-triangle-exclamation' if status_color == 'caution' else ('fa-circle-question' if status_color == 'unknown' else 'fa-skull-crossbones')) }}"></i>
+          STATUS: {{ "SECURE & VERIFIED" if status_color == 'success' else ("CAUTION - REVIEW RECOMMENDED" if status_color == 'caution' else ("DOES NOT EXIST" if status_color == 'unknown' else "DANGEROUS / THREAT DETECTED")) }}
+        </div>
+        <ul class="summary-bullets">
+          <li><span>Domain Type:</span> {{ domain_type }}</li>
+          {% if threat_type %}
+          <li><span>Threat Type:</span> {{ threat_type }}</li>
+          {% endif %}
+          {% if security_score is not none %}
+          <li><span>Security Score:</span> {{ security_score }}/100</li>
+          {% endif %}
+          {% if connection_status %}
+          <li><span>DNS Status:</span> {{ connection_status }}</li>
+          {% endif %}
+        </ul>
+        <div class="summary-message">
+          {{ message }}
+        </div>
+      </div>
+    </div>
+
     <div class="metric-grid">
 
       <!-- Status Card -->
-      <div class="dg-card metric-card status-card {{ 'is-safe' if status_color == 'success' else ('is-unknown' if status_color == 'unknown' else 'is-danger') }}">
+      <div class="dg-card metric-card status-card {{ 'is-safe' if status_color == 'success' else ('is-caution' if status_color == 'caution' else ('is-unknown' if status_color == 'unknown' else 'is-danger')) }}">
         <div class="metric-label">Status</div>
         <div class="status-badge">
           <span class="status-icon">
-            <i class="fa-solid {{ 'fa-circle-check' if status_color == 'success' else ('fa-circle-question' if status_color == 'unknown' else 'fa-triangle-exclamation') }}"></i>
+            <i class="fa-solid {{ 'fa-circle-check' if status_color == 'success' else ('fa-triangle-exclamation' if status_color == 'caution' else ('fa-circle-question' if status_color == 'unknown' else 'fa-skull-crossbones')) }}"></i>
           </span>
           {{ status }}
         </div>
@@ -216,13 +241,20 @@
 
     {% if dns %}
     <!-- Live DNS Resolution -->
-    <div class="dg-card readout-card" style="margin-bottom:16px;">
+    <div class="dg-card readout-card {{ 'is-unknown-readout' if dns.nxdomain else '' }}" style="margin-bottom:16px;">
       <div class="dg-card-body">
         <div class="readout-label">Live DNS Resolution</div>
         {% if dns.resolved %}
         <div class="readout-body">
           Resolved in {{ dns.response_time_ms }} ms &nbsp;→&nbsp;
           <span style="color: var(--text);">{{ dns.records | join(", ") }}</span>
+        </div>
+        {% elif dns.nxdomain %}
+        <div class="readout-body">
+          <span class="risk-pill risk-Unknown"><i class="fa-solid fa-circle-question"></i> Does not currently resolve</span>
+          <span style="color: var(--text-mute); margin-left:8px;">
+            This domain isn't registered/live right now - the verdict above is based purely on the query pattern, not on whether the domain is currently reachable.
+          </span>
         </div>
         {% else %}
         <div class="readout-body" style="color: var(--text-mute);">
@@ -234,7 +266,7 @@
     {% endif %}
 
     <!-- Recommendation Readout -->
-    <div class="dg-card readout-card {{ 'is-safe-readout' if status_color == 'success' else ('is-unknown-readout' if status_color == 'unknown' else 'is-danger-readout') }}">
+    <div class="dg-card readout-card {{ 'is-safe-readout' if status_color == 'success' else ('is-caution-readout' if status_color == 'caution' else 'is-danger-readout') }}">
       <div class="dg-card-body">
         <div class="readout-label">Recommendation</div>
         <div class="readout-body">{{ message }}</div>

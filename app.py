@@ -127,7 +127,34 @@ def analyze_domain(domain, query_type, resolve_dns=False, deep_enrichment=False,
             "error": "Something went wrong while analyzing that domain.",
         }
 
-    if prediction == "benign":
+    feature_dict = features.iloc[0].to_dict()
+    tld_risk = tld_encoding.get_tld_risk_score(domain)
+    low_confidence = confidence < 85
+
+    if prediction == "benign" and (tld_risk["risk_score"] >= 0.15 or low_confidence):
+        # Either the TLD has a meaningfully elevated abuse score, or the model
+        # itself isn't very confident this is benign (below 85%) - don't give
+        # a clean bill of health just because "benign" narrowly won.
+        status = "Suspicious - Elevated TLD Risk" if tld_risk["risk_score"] >= 0.15 else "Suspicious - Low Model Confidence"
+        risk_level = "Medium"
+        status_color = "caution"
+        if tld_risk["risk_score"] >= 0.15 and low_confidence:
+            message = (
+                f"The model leans benign but with only {confidence}% confidence, and .{tld_risk['tld']} "
+                f"carries an elevated target-encoded risk score ({tld_risk['risk_score']}). Worth a second look."
+            )
+        elif tld_risk["risk_score"] >= 0.15:
+            message = (
+                f"The query pattern itself doesn't look like DNS tunneling, but .{tld_risk['tld']} "
+                f"carries a meaningfully elevated target-encoded risk score ({tld_risk['risk_score']}) "
+                "based on historical TLD abuse patterns. Worth a second look before you trust it."
+            )
+        else:
+            message = (
+                f"The model leans benign, but with only {confidence}% confidence - not confident enough "
+                "to call this a clean bill of health. Worth a second look before you trust it."
+            )
+    elif prediction == "benign":
         status = "Safe Domain"
         risk_level = "Low"
         status_color = "success"
@@ -141,8 +168,6 @@ def analyze_domain(domain, query_type, resolve_dns=False, deep_enrichment=False,
             "with DNS tunneling and should be investigated before use."
         )
 
-    feature_dict = features.iloc[0].to_dict()
-
     result = {
         "domain": domain,
         "query_type": query_type,
@@ -154,33 +179,75 @@ def analyze_domain(domain, query_type, resolve_dns=False, deep_enrichment=False,
         "message": message,
         "features": feature_dict,
         "reasons": generate_reasons(feature_dict),
-        "tld_risk": tld_encoding.get_tld_risk_score(domain),
+        "tld_risk": tld_risk,
         "error": None,
     }
 
-    if result["tld_risk"]["risk_score"] >= 0.15:
+    if tld_risk["risk_score"] >= 0.15:
         result["reasons"].append({
             "ok": False,
-            "text": f".{result['tld_risk']['tld']} has an elevated target-encoded risk score ({result['tld_risk']['risk_score']}) based on historical TLD abuse patterns",
+            "text": f".{tld_risk['tld']} has an elevated target-encoded risk score ({tld_risk['risk_score']}) based on historical TLD abuse patterns",
         })
+
+    # --- Derived, honest summary card fields ---
+    # Security Score: high when the model is confident it's benign AND the
+    # TLD itself isn't a red flag, low when either signal says otherwise.
+    # NOT the same number as "Model Confidence" - it's reframed as "how
+    # safe does this look overall", combining both signals.
+    if prediction == "benign":
+        tld_penalty = round(tld_risk["risk_score"] * 40)
+        result["security_score"] = max(0, round(confidence) - tld_penalty)
+        if status_color == "caution":
+            if tld_risk["risk_score"] >= 0.15 and low_confidence:
+                result["domain_type"] = "Ambiguous Pattern, Risky TLD"
+                result["threat_type"] = f"Low Model Confidence + Elevated TLD Risk (.{tld_risk['tld']})"
+            elif tld_risk["risk_score"] >= 0.15:
+                result["domain_type"] = "Clean Lexical Pattern, Risky TLD"
+                result["threat_type"] = f"Elevated TLD Abuse Risk (.{tld_risk['tld']})"
+            else:
+                result["domain_type"] = "Ambiguous Lexical Pattern"
+                result["threat_type"] = f"Low Model Confidence ({confidence}%)"
+        else:
+            result["domain_type"] = "Clean - No Tunneling Indicators"
+            result["threat_type"] = None
+    else:
+        result["security_score"] = round(100 - confidence)
+        result["domain_type"] = "Suspicious Lexical Pattern"
+        if feature_dict.get("digit_ratio", 0) > 0.15 and feature_dict.get("entropy", 0) > 3.5:
+            result["threat_type"] = "Likely DNS Tunneling / Data Exfiltration"
+        elif feature_dict.get("subdomain_length", 0) >= 40:
+            result["threat_type"] = "Encoded Payload in Subdomain"
+        else:
+            result["threat_type"] = "Anomalous Query Structure"
 
     if resolve_dns:
         result["dns"] = resolve_domain(domain, query_type if query_type != "TXT" else "A")
-
-        # If the domain doesn't even exist on public DNS, "safe vs threat" isn't
-        # a meaningful question - override the verdict rather than show a
-        # misleading "Safe Domain" for something that was never real to begin with.
+        # NOTE: DNS existence overrides the verdict ONLY when the pattern had
+        # nothing else to flag (pure "Safe" tier) - there's genuinely nothing
+        # to verify about a domain that was never registered. Threat and
+        # Caution tiers stay as-is regardless of existence: a suspicious or
+        # tunneling-shaped QUERY PATTERN is meaningful whether or not the
+        # domain resolves at the exact moment you check it (matching how
+        # Batch Upload, the API, and Website Check all treat this).
         if result["dns"].get("nxdomain"):
-            result["status"] = "Domain Does Not Exist"
-            result["risk_level"] = "Unknown"
-            result["status_color"] = "unknown"
-            result["confidence"] = None
-            result["message"] = (
-                "This domain does not resolve on the public DNS system. It may be a typo, "
-                "an unregistered domain, or a name that was never real to begin with - there's "
-                "nothing to assess for safety since no such domain actually exists."
-            )
-            save_history = False  # not a meaningful safe/threat data point
+            result["connection_status"] = "Does Not Resolve (NXDOMAIN)"
+            if result["status_color"] == "success":
+                result["status"] = "Domain Does Not Exist"
+                result["risk_level"] = "Unknown"
+                result["status_color"] = "unknown"
+                result["security_score"] = None
+                result["domain_type"] = "Unregistered / Available for Purchase"
+                result["message"] = (
+                    "This domain does not resolve on the public DNS system. It may be a typo, "
+                    "an unregistered domain, or a name that was never real to begin with - there's "
+                    "nothing to verify since no such domain actually exists."
+                )
+        elif result["dns"].get("resolved"):
+            result["connection_status"] = "Reachable"
+        else:
+            result["connection_status"] = result["dns"].get("error", "Unknown")
+    else:
+        result["connection_status"] = None
 
     if deep_enrichment:
         try:
@@ -202,12 +269,15 @@ def analyze_domain(domain, query_type, resolve_dns=False, deep_enrichment=False,
         result["txt"] = get_txt_record(domain)
         result["reputation"] = enrichment.get_reputation(domain, VT_API_KEY)
 
-    # A nonexistent domain has no meaningful "why" - clear anything that
-    # explains a prediction that's no longer being shown as the verdict.
-    if result.get("dns", {}).get("nxdomain"):
+    # If existence upgraded this to "Does Not Exist", there's nothing
+    # meaningful left to explain - clear the pattern-based explanations
+    # rather than showing a "why is this safe" breakdown that contradicts
+    # the "nothing to verify" message above.
+    if result["status_color"] == "unknown":
         result["reasons"] = None
         result["shap_explanation"] = None
         result["tld_risk"] = None
+        save_history = False  # not a meaningful safe/threat data point
 
     if save_history:
         try:
@@ -269,6 +339,10 @@ def predict():
         domain_age=result.get("domain_age"),
         txt=result.get("txt"),
         reputation=result.get("reputation"),
+        domain_type=result.get("domain_type"),
+        security_score=result.get("security_score"),
+        threat_type=result.get("threat_type"),
+        connection_status=result.get("connection_status"),
     )
 
 

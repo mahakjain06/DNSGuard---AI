@@ -117,6 +117,67 @@ a { color: inherit; }
   background: var(--safe);
 }
 
+/* ---------- At-a-glance Summary Card ---------- */
+.summary-card { border-width: 1px; border-left-width: 4px; }
+.summary-card.is-safe { border-left-color: var(--safe); }
+.summary-card.is-danger { border-left-color: var(--danger); }
+.summary-card.is-caution { border-left-color: var(--caution); }
+.summary-card.is-unknown { border-left-color: var(--text-mute); }
+
+.summary-status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  margin-bottom: 16px;
+}
+
+.summary-card.is-safe .summary-status-line { color: var(--safe); }
+.summary-card.is-danger .summary-status-line { color: var(--danger); }
+.summary-card.is-caution .summary-status-line { color: var(--caution); }
+.summary-card.is-unknown .summary-status-line { color: var(--text-mute); }
+
+.summary-bullets {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.summary-bullets li {
+  font-size: 0.9rem;
+  color: var(--text);
+  padding-left: 16px;
+  position: relative;
+}
+
+.summary-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--text-mute);
+}
+
+.summary-bullets li span {
+  color: var(--text-mute);
+  margin-right: 4px;
+}
+
+.summary-message {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  line-height: 1.5;
+}
+
 /* ---------- Alert ---------- */
 .alert-dg {
   margin-top: 16px;
@@ -457,7 +518,7 @@ select.input-dg {
 }
 
 .risk-Low { background: var(--safe-soft); color: var(--safe); }
-.risk-Medium { background: var(--danger-soft); color: var(--warn); }
+.risk-Medium { background: var(--caution-soft); color: var(--caution); }
 .risk-High { background: var(--danger-soft); color: var(--danger); }
 .risk-Unknown { background: rgba(148, 163, 184, 0.12); color: var(--text-mute); }
 .risk-Caution { background: var(--caution-soft); color: var(--caution); }
@@ -516,6 +577,7 @@ select.input-dg {
 
 .is-danger-readout .dg-card-body { border-left-color: var(--danger); }
 .is-safe-readout .dg-card-body { border-left-color: var(--safe); }
+.is-caution-readout .dg-card-body { border-left-color: var(--caution); }
 .is-unknown-readout .dg-card-body { border-left-color: var(--text-mute); }
 
 .readout-label {
