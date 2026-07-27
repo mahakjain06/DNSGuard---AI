@@ -1,222 +1,205 @@
 # 🛡️ DNSGuard AI
 
-> Machine Learning-powered DNS Threat Detection System
+AI-powered cybersecurity application for detecting malicious **Domain Names** and **Website URLs** using Machine Learning.
 
-![Python](https://img.shields.io/badge/Python-3.12-blue)
-![Flask](https://img.shields.io/badge/Flask-3.x-black)
-![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-ML-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Flask](https://img.shields.io/badge/Flask-Backend-black)
+![Machine Learning](https://img.shields.io/badge/Machine-Learning-green)
+![License](https://img.shields.io/badge/License-MIT-orange)
 
 ---
 
-# 🌐 Live Demo
+# 🚀 Live Demo
+
+👉 https://dnsguard-ai-1.onrender.com
+
+---
+
+# 📖 Overview
+
+DNSGuard AI is an intelligent cybersecurity application that analyzes both domain names and website URLs to determine whether they are safe or malicious.
+
+The application extracts security-related features from the input, processes them using a trained Machine Learning model, and predicts the threat level with confidence.
+
+It is designed to demonstrate the practical application of Machine Learning in Cybersecurity.
+
+---
+
+# ✨ Features
+
+✅ Domain Name Analysis
+
+✅ Website URL Analysis
+
+✅ Machine Learning Prediction
+
+✅ Confidence Score
+
+✅ Threat Classification
+
+✅ Clean & Responsive UI
+
+✅ Fast Real-Time Detection
+
+✅ Flask REST Backend
+
+---
+
+# 🖥️ Demo
+
+## Live Website
 
 https://dnsguard-ai-1.onrender.com
 
 ---
 
-# 📌 Project Overview
+# ⚙️ How It Works
 
-DNSGuard AI is a Machine Learning-based web application that analyzes DNS-related information to identify whether a domain is safe or potentially associated with suspicious DNS activity.
-
-The system combines feature engineering, machine learning, and an interactive web dashboard to help users better understand DNS behavior.
-
----
-
-# 🚀 Features
-
-- DNS Threat Prediction
-- Interactive Dashboard
-- Machine Learning Model Comparison
-- Prediction History
-- Batch Analysis
-- Feature Engineering
-- Responsive User Interface
-- Live Web Deployment
+1. Enter a Domain Name or Website URL.
+2. The application extracts important security features.
+3. The Machine Learning model analyzes the input.
+4. The prediction engine classifies it as:
+   - Safe
+   - Malicious
+5. Results are displayed with confidence score and security insights.
 
 ---
 
-# 📸 Screenshots
+# 🧠 Machine Learning
 
-## 🏠 Home Page
+The project uses a supervised Machine Learning model trained on cybersecurity-related data.
 
-![Home](assets/home.png)
+Feature Engineering includes:
 
-## 🔍 Prediction Result
-
-![Prediction](assets/prediction.png)
-
-## 📊 Dashboard
-
-![Dashboard](assets/dashboard.png)
-
-## 📜 History
-
-![History](assets/history.png)
-
-## 🤖 Model Information
-
-![Model](assets/model_info.png)
+- Domain Length
+- Number of Dots
+- Digits Count
+- Hyphen Count
+- Entropy
+- Suspicious Keywords
+- TLD Analysis
+- URL Structure Features
+- DNS-based Indicators
 
 ---
 
 # 🛠️ Tech Stack
 
-## Frontend
+### Frontend
 
 - HTML5
 - CSS3
 - JavaScript
 
-## Backend
+### Backend
 
 - Flask
 - Python
 
-## Machine Learning
+### Machine Learning
 
-- Scikit-Learn
+- Scikit-learn
 - Pandas
 - NumPy
 
-## Deployment
+### Deployment
 
 - Render
 
-## Version Control
+### Version Control
 
 - Git
 - GitHub
 
 ---
 
-# 📂 Dataset
+# 📂 Project Structure
 
-The project uses a custom dataset containing DNS-related features.
-
-Features include:
-
-- Domain Length
-- Subdomain Length
-- Number of Labels
-- Longest Label
-- Shannon Entropy
-- Randomness Score
-- Character Diversity
-- Digit Ratio
-- Character Distribution
-- Base64 Detection
-- Base32 Detection
-- Hex Detection
-- Query Type
-- TTL
-- Response Time
-- TXT Record
-- NXDOMAIN
-- Domain Age
-- SSL Presence
-- Reputation Score
-
-Target:
-
-- Safe
-- Potential DNS Security Threat
-
----
-
-# 🤖 Machine Learning Models
-
-| Model | Accuracy |
-|-------|-----------|
-| Logistic Regression | 99.90% |
-| Random Forest | 99.85% |
-| Decision Tree | 99.75% |
-
-Final model used:
-
-**Logistic Regression**
-
----
-
-# 📂 Folder Structure
-
-```text
-DNSGuard-AI
+```
+DNSGuard-AI/
 │
-├── assets/
-├── datasets/
-├── models/
-├── notebook/
+├── app.py
+├── model/
 ├── static/
 ├── templates/
-├── app.py
-├── dns_utils.py
-├── feature_engineering.py
-├── enrichment.py
-├── explain.py
-├── database.py
-├── model_insights.py
+├── utils/
+├── dataset/
 ├── requirements.txt
-├── README.md
+└── README.md
 ```
 
 ---
 
-# ⚙️ Installation
+# 📸 Screenshots
 
-Clone Repository
+(Add screenshots here)
+
+Home Page
+
+Prediction Result
+
+Domain Analysis
+
+Website URL Analysis
+
+---
+
+# 🚀 Future Improvements
+
+- VirusTotal API Integration
+- WHOIS Information
+- SSL Certificate Analysis
+- Phishing Detection
+- Malware Intelligence
+- URL Reputation Score
+- Browser Extension
+- User Login Dashboard
+- Scan History
+
+---
+
+# 💻 Installation
 
 ```bash
-git clone https://github.com/mahakjain06/DNSGuard---AI.git
-```
+git clone https://github.com/yourusername/DNSGuard-AI.git
 
-Move into project
+cd DNSGuard-AI
 
-```bash
-cd DNSGuard---AI
-```
-
-Install dependencies
-
-```bash
 pip install -r requirements.txt
-```
 
-Run application
-
-```bash
 python app.py
 ```
 
-Open browser
+---
 
-```
-http://127.0.0.1:5000
-```
+# 📈 Use Cases
+
+- Cybersecurity Education
+- Malicious Domain Detection
+- Website Risk Analysis
+- ML Portfolio Project
+- Security Research
 
 ---
 
-# 🎯 Future Improvements
+# 🤝 Contributing
 
-- Explainable AI (SHAP)
-- Live WHOIS Lookup
-- Threat Risk Meter
-- PDF Report Generation
-- Real-Time DNS Monitoring
-- Threat Timeline
-- API Support
+Contributions, issues and feature requests are welcome.
+
+Feel free to fork the repository and submit a Pull Request.
+
+---
+
+# 📄 License
+
+This project is licensed under the MIT License.
 
 ---
 
 # 👩‍💻 Author
 
-**Mahak Jain**
+Mahak Jain
 
-B.Tech Computer Science (AI & ML)
+AI & Machine Learning Enthusiast
 
-GitHub:
-https://github.com/mahakjain06
-
----
-
-⭐ If you found this project useful, consider giving it a Star!
+GitHub: https://github.com/yourusername
